@@ -1,4 +1,4 @@
-# vim: set ft=yaml.ansible sw=2 tw=2 et :
+# vim: set ft=yaml.ansible sw=2 ts=2 et :
 ---
 
 - name: Configure bootstick image

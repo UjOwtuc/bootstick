@@ -1,4 +1,4 @@
-# vim: set ft=yaml sw=2 tw=2 et :
+# vim: set ft=yaml sw=2 ts=2 et :
 ---
 
 steps:
@@ -81,6 +81,8 @@ steps:
   - grub: bios
     tag: tag-root
 
+  # Magic: mounts done by grub step above seem to be needed for ansible step to
+  # work
   - ansible: tag-root
     playbook: ansible.yaml
 
