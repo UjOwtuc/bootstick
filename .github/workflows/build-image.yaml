@@ -1,0 +1,39 @@
+# vim: set ft=yaml sw=2 tw=2 et :
+---
+
+name: build image
+
+on:
+  push:
+    branches:
+      - main
+      - ci
+
+jobs:
+  i386:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: cache
+        uses: actions/cache@v2
+        with:
+          key: rootfs
+          path: rootfs.tar.gz
+
+      - name: install packages
+        run: |-
+          sudo apt update
+          sudo apt install debootstrap qemu-utils kpartx qemu-user-static vmdb2 pixz
+
+      - name: build image
+        run: sudo vmdb2 i386.yaml --output i386.img --rootfs-tarball rootfs.tar.gz --verbose
+
+      - name: compress image
+        run: sudo pixz i386.img
+
+      - uses: actions/upload-artifact@v1
+        with:
+          name: i386.img.xz
+          path: i386.img.xz
+

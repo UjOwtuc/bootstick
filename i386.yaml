@@ -48,17 +48,6 @@ steps:
       deb http://deb.debian.org/debian bullseye main
       deb http://deb.debian.org/debian bullseye-updates main
       deb http://security.debian.org/debian-security bullseye-security main
-
-    unless: rootfs_unpacked
-
-  - copy-file: /etc/initramfs-tools/hooks/rpi-resizerootfs
-    src: rootfs/etc/initramfs-tools/hooks/rpi-resizerootfs
-    perm: 0755
-    unless: rootfs_unpacked
-
-  - copy-file: /etc/initramfs-tools/scripts/local-bottom/rpi-resizerootfs
-    src: rootfs/etc/initramfs-tools/scripts/local-bottom/rpi-resizerootfs
-    perm: 0755
     unless: rootfs_unpacked
 
   - apt: install
@@ -82,10 +71,6 @@ steps:
       sed -i 's,root:[^:]*:,root::,' "${ROOT?}/etc/shadow"
       install -m 644 -o root -g root rootfs/etc/fstab "${ROOT?}/etc/fstab"
       mkdir -p "${ROOT?}/etc/systemd/system/basic.target.requires/"
-
-      # Resize script is now in the initrd for first boot; no need to ship it.
-      rm -f "${ROOT?}/etc/initramfs-tools/hooks/rpi-resizerootfs"
-      rm -f "${ROOT?}/etc/initramfs-tools/scripts/local-bottom/rpi-resizerootfs"
       mkdir -p "${ROOT?}/etc/systemd/system/multi-user.target.requires/"
 
     root-fs: tag-root
