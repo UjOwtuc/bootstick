@@ -1,9 +1,9 @@
-# vim: set ft=yaml sw=2 tw=2 et :
+# vim: set ft=yaml sw=2 ts=2 et :
 ---
 
 name: build image
 
-on:
+"on":
   push:
     branches:
       - main
