@@ -58,6 +58,10 @@ steps:
       - linux-image-686
       - python3
       - mpv
+      - xserver-xorg
+      - xinit
+      - locales
+      - kbd
     tag: tag-root
     unless: rootfs_unpacked
 
@@ -72,37 +76,36 @@ steps:
       install -m 644 -o root -g root rootfs/etc/fstab "${ROOT?}/etc/fstab"
       mkdir -p "${ROOT?}/etc/systemd/system/basic.target.requires/"
       mkdir -p "${ROOT?}/etc/systemd/system/multi-user.target.requires/"
-
     root-fs: tag-root
 
   - grub: bios
     tag: tag-root
 
+  - ansible: tag-root
+    playbook: ansible.yaml
+
   # Clean up archive cache (likely not useful) and lists (likely outdated) to
   # reduce image size by several hundred megabytes.
   - chroot: tag-root
-    shell: |
-      apt-get clean
+    shell: |-
+      apt clean
       rm -rf /var/lib/apt/lists
 
   # TODO(https://github.com/larswirzenius/vmdb2/issues/24): remove once vmdb
   # clears /etc/resolv.conf on its own.
-  - shell: |
+  - shell: |-
       rm "${ROOT?}/etc/resolv.conf"
     root-fs: tag-root
 
-  # Clear /etc/machine-id and /var/lib/dbus/machine-id, as both should
-  # be auto-generated upon first boot. From the manpage
-  # (machine-id(5)):
-  #
-  #   For normal operating system installations, where a custom image is
-  #   created for a specific machine, /etc/machine-id should be
-  #   populated during installation.
-  #
   # Note this will also trigger ConditionFirstBoot=yes for systemd.
-  # On Buster, /etc/machine-id should be an emtpy file, not an absent file
-  # On Bullseye, /etc/machine-id should not exist in an image
   - chroot: tag-root
-    shell: |
+    shell: |-
       rm -f /etc/machine-id /var/lib/dbus/machine-id
+
+  - mount: tag-data
+    dirname: /media/data
+    mount-on: tag-root
+
+  - create-file: /media/data/.delete-this-fs
+    contents: this filesystem will be deleted on first boot
 

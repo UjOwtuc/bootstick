@@ -1,0 +1,12 @@
+[Unit]
+Description=Recreate data filesystem on first boot
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/usr/local/sbin/recreate_data_fs
+
+[Install]
+WantedBy=default.target
+

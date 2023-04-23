@@ -1,0 +1,51 @@
+# vim: set ft=yaml.ansible sw=2 tw=2 et :
+---
+
+- name: Configure bootstick image
+  hosts: image
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    user_name: user
+    systemd_services:
+      - x11
+      - firstboot
+
+  tasks:
+    - name: Create user account
+      ansible.builtin.user:
+        name: "{{ user_name }}"
+        groups:
+          - users
+          - video
+          - plugdev
+        shell: /bin/bash
+        state: present
+
+    - name: Install user's X session config
+      ansible.builtin.template:
+        src: xinitrc.j2
+        dest: /home/{{ user_name }}/.xinitrc
+        mode: "0644"
+        owner: "{{ user_name }}"
+
+    - name: Install systemd services
+      ansible.builtin.template:
+        src: "{{ item }}.service.j2"
+        dest: /etc/systemd/system/{{ item }}.service
+        mode: "0644"
+      loop: "{{ systemd_services }}"
+
+    - name: Enable systemd services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: true
+      loop: "{{ systemd_services }}"
+
+    - name: Recreate data filesystem script
+      ansible.builtin.copy:
+        src: recreate_data_fs
+        dest: /usr/local/sbin/recreate_data_fs
+        mode: "0755"
+

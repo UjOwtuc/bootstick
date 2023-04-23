@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -x
+set -e
+
+data_path=/media/data
+data_dev=$(blkid -L DATA)
+
+if mountpoint "$data_path" && [[ -s "$data_path/.delete-this-fs" ]] && [[ -n "$data_dev" ]]
+then
+	umount "$data_path"
+	mkfs.vfat -n DATA "$data_dev"
+	mount "$data_path"
+fi
+
