@@ -9,6 +9,8 @@ name: build image
     branches:
       - main
       - ci
+    tags:
+      - '*.*.*'
 
 jobs:
   i386:
