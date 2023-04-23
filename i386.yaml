@@ -1,0 +1,123 @@
+# vim: set ft=yaml sw=2 tw=2 et :
+---
+
+steps:
+  - mkimg: "{{ output }}"
+    size: 2500M
+
+  - mklabel: msdos
+    device: "{{ output }}"
+
+  - mkpart: primary
+    device: "{{ output }}"
+    start: 4MiB
+    end: 2048MiB
+    tag: tag-root
+
+  - mkpart: primary
+    fs-type: 'fat32'
+    device: "{{ output }}"
+    start: 2048MiB
+    end: 100%
+    tag: tag-data
+
+  - kpartx: "{{ output }}"
+
+  - mkfs: ext4
+    partition: tag-root
+    label: ROOT
+
+  - mkfs: vfat
+    partition: tag-data
+    label: DATA
+
+  - mount: tag-root
+
+  - unpack-rootfs: tag-root
+
+  - qemu-debootstrap: bullseye
+    mirror: http://deb.debian.org/debian
+    target: tag-root
+    arch: i386
+    components:
+      - main
+    unless: rootfs_unpacked
+
+  - create-file: /etc/apt/sources.list
+    contents: |+
+      deb http://deb.debian.org/debian bullseye main
+      deb http://deb.debian.org/debian bullseye-updates main
+      deb http://security.debian.org/debian-security bullseye-security main
+
+    unless: rootfs_unpacked
+
+  - copy-file: /etc/initramfs-tools/hooks/rpi-resizerootfs
+    src: rootfs/etc/initramfs-tools/hooks/rpi-resizerootfs
+    perm: 0755
+    unless: rootfs_unpacked
+
+  - copy-file: /etc/initramfs-tools/scripts/local-bottom/rpi-resizerootfs
+    src: rootfs/etc/initramfs-tools/scripts/local-bottom/rpi-resizerootfs
+    perm: 0755
+    unless: rootfs_unpacked
+
+  - apt: install
+    packages:
+      - dosfstools
+      - parted
+      - ssh
+      - linux-image-686
+      - python3
+      - mpv
+    tag: tag-root
+    unless: rootfs_unpacked
+
+  - cache-rootfs: tag-root
+    unless: rootfs_unpacked
+
+  - shell: |
+      echo "cobol" > "${ROOT?}/etc/hostname"
+
+      # Allow root logins locally with no password
+      sed -i 's,root:[^:]*:,root::,' "${ROOT?}/etc/shadow"
+      install -m 644 -o root -g root rootfs/etc/fstab "${ROOT?}/etc/fstab"
+      mkdir -p "${ROOT?}/etc/systemd/system/basic.target.requires/"
+
+      # Resize script is now in the initrd for first boot; no need to ship it.
+      rm -f "${ROOT?}/etc/initramfs-tools/hooks/rpi-resizerootfs"
+      rm -f "${ROOT?}/etc/initramfs-tools/scripts/local-bottom/rpi-resizerootfs"
+      mkdir -p "${ROOT?}/etc/systemd/system/multi-user.target.requires/"
+
+    root-fs: tag-root
+
+  - grub: bios
+    tag: tag-root
+
+  # Clean up archive cache (likely not useful) and lists (likely outdated) to
+  # reduce image size by several hundred megabytes.
+  - chroot: tag-root
+    shell: |
+      apt-get clean
+      rm -rf /var/lib/apt/lists
+
+  # TODO(https://github.com/larswirzenius/vmdb2/issues/24): remove once vmdb
+  # clears /etc/resolv.conf on its own.
+  - shell: |
+      rm "${ROOT?}/etc/resolv.conf"
+    root-fs: tag-root
+
+  # Clear /etc/machine-id and /var/lib/dbus/machine-id, as both should
+  # be auto-generated upon first boot. From the manpage
+  # (machine-id(5)):
+  #
+  #   For normal operating system installations, where a custom image is
+  #   created for a specific machine, /etc/machine-id should be
+  #   populated during installation.
+  #
+  # Note this will also trigger ConditionFirstBoot=yes for systemd.
+  # On Buster, /etc/machine-id should be an emtpy file, not an absent file
+  # On Bullseye, /etc/machine-id should not exist in an image
+  - chroot: tag-root
+    shell: |
+      rm -f /etc/machine-id /var/lib/dbus/machine-id
+
