@@ -52,11 +52,12 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: i386.img.xz
-          path: i386.img.xz
+          path: images/
 
       - uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          fail_on_unmatched_files: true
           files: |-
-            i386.img.xz
+            images/i386.img.xz
 
